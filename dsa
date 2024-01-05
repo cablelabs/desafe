@@ -1,0 +1,4 @@
+#! /bin/bash
+CLIENTID=$1
+PORT=`expr 8080 + $CLIENTID`
+MY_KEY=client${CLIENTID}.pem CLIENT=${CLIENTID} python3 dsa.py ${PORT}

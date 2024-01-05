@@ -1,0 +1,29 @@
+#! /bin/bash
+METRIC=$1
+JSON=`curl -s -d '{"metric":"'${METRIC}'"}' http://localhost:8081/start_aggregation`
+AGGID=`echo "$JSON" | jq -r .aggid`
+ERROR=`echo "$JSON" | jq -r .error`
+TOTAL=0
+if [ ! "$ERROR" == "null" ]; then
+  echo "ERROR=$ERROR"
+  exit 1
+fi
+for i in `seq 0 3`; do
+ SIG=`echo "$JSON" | jq -r '.submissions['$i']'`
+ if [ "$SIG" == "null" ]; then
+   echo "CLIENT $(expr $i + 1) FAILURE" 
+ else
+   VALID=`python3 signer.py verify client$(expr $i + 1).pub $AGGID $SIG`
+   if [ "$VALID" == "True" ]; then
+     echo "CLIENT $(expr $i + 1) OK" 
+     TOTAL=`expr $TOTAL + 1`
+   else
+     echo "CLIENT $(expr $i + 1) FAILURE" 
+   fi
+ fi
+done
+echo "$JSON" | jq
+VAL=`echo "$JSON" | jq .total`
+echo "TOTAL SUBMITTERS: $TOTAL"
+AVG=`echo "scale=2; $VAL/$TOTAL" | bc`
+echo "AVERAGE: $AVG"
